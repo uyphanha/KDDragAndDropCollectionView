@@ -162,7 +162,6 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
             var repImgFrame = bundle.representationImageView.frame
             repImgFrame.origin = CGPoint(x: pointOnCanvas.x - bundle.offset.x, y: pointOnCanvas.y - bundle.offset.y);
             bundle.representationImageView.frame = repImgFrame
-            print("Changing: x = '\(draggingFrame.origin.x)'; y = '\(draggingFrame.origin.y)'")
             
             self.isDragging = true
             
