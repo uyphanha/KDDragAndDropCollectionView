@@ -52,9 +52,12 @@ public protocol KDDroppable {
 public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     
     fileprivate var canvas : UIView = UIView()
+    fileprivate var scrollView: UIScrollView? = nil
     fileprivate var views : [UIView] = []
     fileprivate var longPressGestureRecogniser = UILongPressGestureRecognizer()
+    fileprivate var isDragging = false
     
+    public var offsetToScroll: CGFloat = 0
     
     struct Bundle {
         var offset : CGPoint = CGPoint.zero
@@ -69,7 +72,13 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         
         super.init()
         
-        self.canvas = canvas
+        guard let superView = canvas.superview else {
+            fatalError("Canvas must be inside a view")
+        }
+        if let scrollView = canvas as? UIScrollView {
+            self.scrollView = scrollView
+        }
+        self.canvas = superView
         
         self.longPressGestureRecogniser.delegate = self
         self.longPressGestureRecogniser.minimumPressDuration = 0.3
@@ -81,7 +90,9 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         
-        guard gestureRecognizer.state == .possible else { return false }
+        guard gestureRecognizer.state == .possible else {
+            return false
+        }
         
         for view in self.views where view is KDDraggable  {
             
@@ -126,13 +137,20 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     @objc public func updateForLongPress(_ recogniser : UILongPressGestureRecognizer) -> Void {
         
         guard let bundle = self.bundle else { return }
+        var viewToDetect = recogniser.view!
+        if let view = self.scrollView {
+            viewToDetect = view
+        }
         
+        let pointOnDetectedView = recogniser.location(in: viewToDetect)
         let pointOnCanvas = recogniser.location(in: recogniser.view)
         let sourceDraggable : KDDraggable = bundle.sourceDraggableView as! KDDraggable
         let pointOnSourceDraggable = recogniser.location(in: bundle.sourceDraggableView)
         
+        var draggingFrame = bundle.representationImageView.frame
+        draggingFrame.origin = CGPoint(x: pointOnDetectedView.x - bundle.offset.x, y: pointOnDetectedView.y - bundle.offset.y);
+        
         switch recogniser.state {
-            
             
         case .began :
             self.canvas.addSubview(bundle.representationImageView)
@@ -144,6 +162,9 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
             var repImgFrame = bundle.representationImageView.frame
             repImgFrame.origin = CGPoint(x: pointOnCanvas.x - bundle.offset.x, y: pointOnCanvas.y - bundle.offset.y);
             bundle.representationImageView.frame = repImgFrame
+            print("Changing: x = '\(draggingFrame.origin.x)'; y = '\(draggingFrame.origin.y)'")
+            
+            self.isDragging = true
             
             var overlappingAreaMAX: CGFloat = 0.0
             
@@ -163,7 +184,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                  * ██████████████████████████████████████████
                  */
                 
-                let overlappingAreaCurrent = bundle.representationImageView.frame.intersection(viewFrameOnCanvas).area
+                let overlappingAreaCurrent = draggingFrame.intersection(viewFrameOnCanvas).area
                 
                 if overlappingAreaCurrent > overlappingAreaMAX {
                     
@@ -175,11 +196,9 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                 
             }
             
-            
-            
             if let droppable = mainOverView as? KDDroppable {
                 
-                let rect = self.canvas.convert(bundle.representationImageView.frame, to: mainOverView)
+                let rect = viewToDetect.convert(draggingFrame, to: mainOverView)
                 
                 if droppable.canDropAtRect(rect) {
                     
@@ -197,6 +216,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                 }
             }
             
+            self.checkForEdgesAndScroll(repImgFrame)
             
         case .ended :
             
@@ -206,7 +226,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                     
                     sourceDraggable.dragDataItem(bundle.dataItem)
                     
-                    let rect = self.canvas.convert(bundle.representationImageView.frame, to: bundle.overDroppableView)
+                    let rect = viewToDetect.convert(draggingFrame, to: bundle.overDroppableView)
                     
                     droppable.dropDataItem(bundle.dataItem, atRect: rect)
                     
@@ -215,10 +235,13 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
             
             bundle.representationImageView.removeFromSuperview()
             sourceDraggable.stopDragging()
+            self.isDragging = false
             
         default:
+            bundle.representationImageView.removeFromSuperview()
+            sourceDraggable.stopDragging()
+            self.isDragging = false
             break
-            
         }
         
     }
@@ -242,8 +265,65 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         return r
     }
     
+    var paging = false
+    func checkForEdgesAndScroll(_ rect : CGRect) {
+        guard let scrollView = self.scrollView else {
+            return
+        }
+        
+        if (paging) {
+            return
+        }
+        
+        let currentRect : CGRect = CGRect(x: scrollView.contentOffset.x, y: scrollView.contentOffset.y, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
+        var rectForNextScroll : CGRect = currentRect
+        
+        let isHorizantal = currentRect.height == scrollView.contentSize.height
+        if (isHorizantal && currentRect.width < scrollView.contentSize.width) {
+            let leftBoundary = CGRect(x: -150, y: 0.0, width: 30.0, height: scrollView.frame.size.height)
+            let rightBoundary = CGRect(x: scrollView.frame.size.width + 150, y: 0.0, width: 30.0, height: scrollView.frame.size.height)
+            
+            if rect.intersects(leftBoundary) == true {
+                rectForNextScroll.origin.x -= self.offsetToScroll
+                if rectForNextScroll.origin.x < 0 {
+                    rectForNextScroll.origin.x = 0
+                }
+            } else if rect.intersects(rightBoundary) == true {
+                rectForNextScroll.origin.x += self.offsetToScroll
+                if rectForNextScroll.origin.x > scrollView.contentSize.width - scrollView.bounds.size.width {
+                    rectForNextScroll.origin.x = scrollView.contentSize.width - scrollView.bounds.size.width
+                }
+            }
+        } else if (currentRect.height < scrollView.contentSize.height) {
+            let topBoundary = CGRect(x: 0.0, y: -30.0, width: scrollView.frame.size.width, height: 30.0)
+            let bottomBoundary = CGRect(x: 0.0, y: scrollView.frame.size.height, width: scrollView.frame.size.width, height: 30.0)
+            
+            if rect.intersects(topBoundary) == true {
+                rectForNextScroll.origin.y -= self.offsetToScroll
+                if rectForNextScroll.origin.y < 0 {
+                    rectForNextScroll.origin.y = 0
+                }
+            }
+            else if rect.intersects(bottomBoundary) == true {
+                rectForNextScroll.origin.y += self.offsetToScroll
+                if rectForNextScroll.origin.y > scrollView.contentSize.height - scrollView.bounds.size.height {
+                    rectForNextScroll.origin.y = scrollView.contentSize.height - scrollView.bounds.size.height
+                }
+            }
+        }
+        
+        // check to see if a change in rectForNextScroll has been made
+        if currentRect.equalTo(rectForNextScroll) == false {
+            self.paging = true
+            scrollView.scrollRectToVisible(rectForNextScroll, animated: true)
+            
+            let delayTime = DispatchTime.now() + Double(Int64(1 * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC)
+            DispatchQueue.main.asyncAfter(deadline: delayTime) {
+                self.paging = false
+            }
+        }
+    }
 }
-
 
 extension CGRect: Comparable {
     
