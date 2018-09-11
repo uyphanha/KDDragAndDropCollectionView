@@ -94,7 +94,11 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
     
     public func startDraggingAtPoint(_ point : CGPoint) -> Void {
         self.draggingPathOfCellBeingDragged = self.indexPathForRow(at: point)
-        self.reloadData()
+        if let indexToReload = self.draggingPathOfCellBeingDragged {
+            if let cell = self.cellForRow(at: indexToReload) {
+                cell.isHidden = true
+            }
+        }
     }
     
     public func stopDragging() -> Void {
@@ -106,8 +110,6 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         }
         
         self.draggingPathOfCellBeingDragged = nil
-        self.reloadData()
-        
     }
     
     public func dragDataItem(_ item : AnyObject) -> Void {
@@ -123,14 +125,14 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         dragDropDataSource.tableView(self, deleteDataItemAtIndexPath: existngIndexPath)
         
         if self.animating {
-            self.deleteRows(at: [existngIndexPath], with: .automatic)
+            self.deleteRows(at: [existngIndexPath], with: .fade)
         } else {
             self.animating = true
             self.performUpdates({ () -> Void in
-                self.deleteRows(at: [existngIndexPath], with: .automatic)
+                self.deleteRows(at: [existngIndexPath], with: .fade)
             }, completion: { complete -> Void in
                 self.animating = false
-                self.reloadData()
+                self.reloadDataSource()
             })
         }
         
@@ -202,7 +204,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
             
             self.performUpdates({ () -> Void in
                 
-                self.insertRows(at: [indexPath], with: .automatic)
+                self.insertRows(at: [indexPath], with: .fade)
                 
             }, completion: { complete -> Void in
                 
@@ -210,7 +212,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
                 
                 // if in the meantime we have let go
                 if self.draggingPathOfCellBeingDragged == nil {
-                    self.reloadData()
+                    self.reloadDataSource()
                 }
             })
             
@@ -271,12 +273,11 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
                 dragDropDS.tableView(self, moveDataItemFromIndexPath: existingIndexPath, toIndexPath: indexPath)
                 
                 self.animating = true
-                
                 self.performUpdates({ () -> Void in
                     self.moveRow(at: existingIndexPath, to: indexPath)
                 }, completion: { (finished) -> Void in
                     self.animating = false
-                    self.reloadData()
+                    self.reloadDataSource()
                 })
                 
                 self.draggingPathOfCellBeingDragged = indexPath
@@ -303,14 +304,14 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         dragDropDataSource.tableView(self, deleteDataItemAtIndexPath: existngIndexPath)
         
         if self.animating {
-            self.deleteRows(at: [existngIndexPath], with: .automatic)
+            self.deleteRows(at: [existngIndexPath], with: .fade)
         } else {
             self.animating = true
             self.performUpdates({ () -> Void in
-                self.deleteRows(at: [existngIndexPath], with: .automatic)
+                self.deleteRows(at: [existngIndexPath], with: .fade)
             }, completion: { (finished) -> Void in
                 self.animating = false
-                self.reloadData()
+                self.reloadDataSource()
             })
             
         }
@@ -336,6 +337,12 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         CATransaction.commit()
     }
     
+    func reloadDataSource() {
+        UIView.performWithoutAnimation {
+            self.reloadData()
+        }
+    }
+    
     public func dropDataItem(_ item : AnyObject, atRect : CGRect) -> Void {
         
         // show hidden cell
@@ -348,6 +355,6 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         
         currentInRect = nil
         self.draggingPathOfCellBeingDragged = nil
-        self.reloadData()
+        self.reloadDataSource()
     }
 }
