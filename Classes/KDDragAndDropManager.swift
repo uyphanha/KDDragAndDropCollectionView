@@ -324,23 +324,3 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     }
 }
 
-extension CGRect: Comparable {
-    
-    public var area: CGFloat {
-        return self.size.width * self.size.height
-    }
-    
-    public static func <=(lhs: CGRect, rhs: CGRect) -> Bool {
-        return lhs.area <= rhs.area
-    }
-    public static func <(lhs: CGRect, rhs: CGRect) -> Bool {
-        return lhs.area < rhs.area
-    }
-    public static func >(lhs: CGRect, rhs: CGRect) -> Bool {
-        return lhs.area > rhs.area
-    }
-    public static func >=(lhs: CGRect, rhs: CGRect) -> Bool {
-        return lhs.area >= rhs.area
-    }
-}
-

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		198C54B6214773B4000F27C2 /* TDDragAndDropTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198C54B4214773B4000F27C2 /* TDDragAndDropTableView.swift */; };
 		198C54B7214773B4000F27C2 /* TDDragAndDropManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198C54B5214773B4000F27C2 /* TDDragAndDropManager.swift */; };
+		198C54BE2147824A000F27C2 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198C54BD2147824A000F27C2 /* Extensions.swift */; };
 		BE3603B61AD7DE06005EE44C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3603B51AD7DE06005EE44C /* AppDelegate.swift */; };
 		BE3603B81AD7DE06005EE44C /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3603B71AD7DE06005EE44C /* ViewController.swift */; };
 		BE3603BB1AD7DE06005EE44C /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BE3603B91AD7DE06005EE44C /* Main.storyboard */; };
@@ -35,6 +36,7 @@
 /* Begin PBXFileReference section */
 		198C54B4214773B4000F27C2 /* TDDragAndDropTableView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TDDragAndDropTableView.swift; sourceTree = "<group>"; };
 		198C54B5214773B4000F27C2 /* TDDragAndDropManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TDDragAndDropManager.swift; sourceTree = "<group>"; };
+		198C54BD2147824A000F27C2 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		BE3603B01AD7DE06005EE44C /* KDDragAndDropCollectionViews.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KDDragAndDropCollectionViews.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE3603B41AD7DE06005EE44C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BE3603B51AD7DE06005EE44C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -133,6 +135,7 @@
 				198C54B4214773B4000F27C2 /* TDDragAndDropTableView.swift */,
 				C7683C262057DC5100EA7698 /* KDDragAndDropManager.swift */,
 				C7683C242057DC5100EA7698 /* KDDragAndDropCollectionView.swift */,
+				198C54BD2147824A000F27C2 /* Extensions.swift */,
 			);
 			path = Classes;
 			sourceTree = SOURCE_ROOT;
@@ -246,6 +249,7 @@
 				C7683C272057DC5100EA7698 /* KDDragAndDropCollectionView.swift in Sources */,
 				BE3603B81AD7DE06005EE44C /* ViewController.swift in Sources */,
 				198C54B6214773B4000F27C2 /* TDDragAndDropTableView.swift in Sources */,
+				198C54BE2147824A000F27C2 /* Extensions.swift in Sources */,
 				C7683C292057DC5100EA7698 /* KDDragAndDropManager.swift in Sources */,
 				BE3603DB1ADBE397005EE44C /* ColorCell.swift in Sources */,
 				BE3603B61AD7DE06005EE44C /* AppDelegate.swift in Sources */,
