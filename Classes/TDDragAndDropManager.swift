@@ -46,10 +46,17 @@ public class TDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         var offset : CGPoint = CGPoint.zero
         var sourceDraggableView : UIView
         var overDroppableView : UIView?
-        var representationImageView : UIView
+        var snapshotView : UIView
         var dataItem : AnyObject
     }
     var bundle : Bundle?
+    
+    lazy var reorderGestureRecognizer: UILongPressGestureRecognizer = {
+        let gestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(TDDragAndDropManager.updateForLongPress(_:)))
+        gestureRecognizer.delegate = self
+        gestureRecognizer.minimumPressDuration = 0.3
+        return gestureRecognizer
+    }()
     
     public init(canvas : UIView, tableViews : [UIView]) {
         
@@ -63,11 +70,8 @@ public class TDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         }
         self.canvas = superView
         
-        self.longPressGestureRecogniser.delegate = self
-        self.longPressGestureRecogniser.minimumPressDuration = 0.3
-        self.longPressGestureRecogniser.addTarget(self, action: #selector(TDDragAndDropManager.updateForLongPress(_:)))
         self.canvas.isMultipleTouchEnabled = false
-        self.canvas.addGestureRecognizer(self.longPressGestureRecogniser)
+        self.canvas.addGestureRecognizer(self.reorderGestureRecognizer)
         self.views = tableViews
     }
     
@@ -77,10 +81,6 @@ public class TDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         
-        guard gestureRecognizer.state == .possible else {
-            return false
-        }
-        
         for view in self.views where view is TDDraggable  {
             
             let draggable = view as! TDDraggable
@@ -88,67 +88,50 @@ public class TDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
             let touchPointInView = touch.location(in: view)
             
             guard draggable.canDragAtPoint(touchPointInView) == true else { continue }
-            
-            guard var representation = draggable.representationImageAtPoint(touchPointInView) else { continue }
-            
-            representation.frame = self.canvas.convert(representation.frame, from: view)
-            representation.alpha = 0.5
-            if let decoredView = draggable.stylingRepresentationView(representation) {
-                representation = decoredView
-            }
-            
-            let pointOnCanvas = touch.location(in: self.canvas)
-            
-            let offset = CGPoint(x: pointOnCanvas.x - representation.frame.origin.x, y: pointOnCanvas.y - representation.frame.origin.y)
-            
             if let dataItem: AnyObject = draggable.dataItemAtPoint(touchPointInView) {
-                
-                self.bundle = Bundle(
-                    offset: offset,
-                    sourceDraggableView: view,
-                    overDroppableView : view is TDDroppable ? view : nil,
-                    representationImageView: representation,
-                    dataItem : dataItem
-                )
-                
                 return true
-                
             }
-            
         }
         
         return false
-        
+    }
+    
+    fileprivate var viewToDetect: UIView {
+        get {
+            if let view = self.scrollView {
+                return view
+            }
+            return self.canvas
+        }
     }
     
     @objc public func updateForLongPress(_ recogniser : UILongPressGestureRecognizer) -> Void {
         
-        guard let bundle = self.bundle else { return }
-        var viewToDetect = recogniser.view!
-        if let view = self.scrollView {
-            viewToDetect = view
-        }
-        
-        let pointOnDetectedView = recogniser.location(in: viewToDetect)
+        let pointOnDetectedView = recogniser.location(in: self.viewToDetect)
         let pointOnCanvas = recogniser.location(in: recogniser.view)
-        let sourceDraggable : TDDraggable = bundle.sourceDraggableView as! TDDraggable
-        let pointOnSourceDraggable = recogniser.location(in: bundle.sourceDraggableView)
-        
-        var draggingFrame = bundle.representationImageView.frame
-        draggingFrame.origin = CGPoint(x: pointOnDetectedView.x - bundle.offset.x, y: pointOnDetectedView.y - bundle.offset.y);
         
         switch recogniser.state {
-            
         case .began :
-            self.canvas.addSubview(bundle.representationImageView)
-            sourceDraggable.startDraggingAtPoint(pointOnSourceDraggable)
+            self.beginReorder(recogniser)
+            guard let bundle = self.bundle else { return }
+            self.canvas.addSubview(bundle.snapshotView)
             
+            let sourceDraggable : TDDraggable = bundle.sourceDraggableView as! TDDraggable
+            let pointOnSourceDraggable = recogniser.location(in: bundle.sourceDraggableView)
+            sourceDraggable.startDraggingAtPoint(pointOnSourceDraggable)
         case .changed :
+            guard let bundle = self.bundle else { return }
+            
+            let sourceDraggable : TDDraggable = bundle.sourceDraggableView as! TDDraggable
+            let pointOnSourceDraggable = recogniser.location(in: bundle.sourceDraggableView)
             
             // Update the frame of the representation image
-            var repImgFrame = bundle.representationImageView.frame
+            var draggingFrame = bundle.snapshotView.frame
+            draggingFrame.origin = CGPoint(x: pointOnDetectedView.x - bundle.offset.x, y: pointOnDetectedView.y - bundle.offset.y);
+            
+            var repImgFrame = bundle.snapshotView.frame
             repImgFrame.origin = CGPoint(x: pointOnCanvas.x - bundle.offset.x, y: pointOnCanvas.y - bundle.offset.y);
-            bundle.representationImageView.frame = repImgFrame
+            bundle.snapshotView.frame = repImgFrame
             
             var overlappingAreaMAX: CGFloat = 0.0
             
@@ -194,15 +177,21 @@ public class TDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                     
                     // set the view the dragged element is over
                     self.bundle!.overDroppableView = mainOverView
-                    
                     droppable.didMoveItem(bundle.dataItem, inRect: rect)
-                    
                 }
             }
             
             self.checkForEdgesAndScroll(repImgFrame)
             
-        case .ended :
+        case .ended, .cancelled, .failed, .possible:
+            guard let bundle = self.bundle else { return }
+            
+            let sourceDraggable : TDDraggable = bundle.sourceDraggableView as! TDDraggable
+            let pointOnSourceDraggable = recogniser.location(in: bundle.sourceDraggableView)
+            
+            // Update the frame of the representation image
+            var draggingFrame = bundle.snapshotView.frame
+            draggingFrame.origin = CGPoint(x: pointOnDetectedView.x - bundle.offset.x, y: pointOnDetectedView.y - bundle.offset.y);
             
             if bundle.sourceDraggableView != bundle.overDroppableView { // if we are actually dropping over a new view.
                 
@@ -210,22 +199,53 @@ public class TDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                     
                     sourceDraggable.dragDataItem(bundle.dataItem)
                     
-                    let rect = viewToDetect.convert(draggingFrame, to: bundle.overDroppableView)
+                    let rect = self.viewToDetect.convert(draggingFrame, to: bundle.overDroppableView)
                     
                     droppable.dropDataItem(bundle.dataItem, atRect: rect)
-                    
                 }
             }
             
-            bundle.representationImageView.removeFromSuperview()
+            bundle.snapshotView.removeFromSuperview()
             sourceDraggable.stopDragging()
-            
-        default:
-            bundle.representationImageView.removeFromSuperview()
-            sourceDraggable.stopDragging()
-            break
         }
-        
+    }
+    
+    // MARK: - Reordering
+    
+    func beginReorder(_ recogniser : UILongPressGestureRecognizer) {
+        for view in self.views where view is TDDraggable  {
+            
+            let draggable = view as! TDDraggable
+            
+            let touchPointInView = recogniser.location(in: view)
+            
+            guard draggable.canDragAtPoint(touchPointInView) == true else { continue }
+            
+            guard var representation = draggable.representationImageAtPoint(touchPointInView) else { continue }
+            
+            representation.frame = self.canvas.convert(representation.frame, from: view)
+            representation.alpha = 0.5
+            if let decoredView = draggable.stylingRepresentationView(representation) {
+                representation = decoredView
+            }
+            
+            let pointOnCanvas = recogniser.location(in: self.canvas)
+            let offset = CGPoint(x: pointOnCanvas.x - representation.frame.origin.x, y: pointOnCanvas.y - representation.frame.origin.y)
+            
+            if let dataItem: AnyObject = draggable.dataItemAtPoint(touchPointInView) {
+                
+                self.bundle?.snapshotView.removeFromSuperview()
+                self.bundle = Bundle(
+                    offset: offset,
+                    sourceDraggableView: view,
+                    overDroppableView : view is TDDroppable ? view : nil,
+                    snapshotView: representation,
+                    dataItem : dataItem
+                )
+                
+                return
+            }
+        }
     }
     
     // MARK: Helper Methods
