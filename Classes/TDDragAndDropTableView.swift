@@ -23,7 +23,7 @@ public protocol TDDragAndDropTableViewDataSource: UITableViewDataSource {
 }
 
 public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
-
+    
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
     }
@@ -126,7 +126,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
             self.deleteRows(at: [existngIndexPath], with: .automatic)
         } else {
             self.animating = true
-            self.performBatchUpdates({ () -> Void in
+            self.performUpdates({ () -> Void in
                 self.deleteRows(at: [existngIndexPath], with: .automatic)
             }, completion: { complete -> Void in
                 self.animating = false
@@ -200,7 +200,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
             
             self.animating = true
             
-            self.performBatchUpdates({ () -> Void in
+            self.performUpdates({ () -> Void in
                 
                 self.insertRows(at: [indexPath], with: .automatic)
                 
@@ -230,7 +230,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         
         let currentRect : CGRect = CGRect(x: self.contentOffset.x, y: self.contentOffset.y, width: self.bounds.size.width, height: self.bounds.size.height)
         var rectForNextScroll : CGRect = currentRect
-
+        
         let topBoundary = CGRect(x: 0.0, y: -30.0, width: self.frame.size.width, height: 30.0)
         let bottomBoundary = CGRect(x: 0.0, y: self.frame.size.height, width: self.frame.size.width, height: 30.0)
         
@@ -272,7 +272,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
                 
                 self.animating = true
                 
-                self.performBatchUpdates({ () -> Void in
+                self.performUpdates({ () -> Void in
                     self.moveRow(at: existingIndexPath, to: indexPath)
                 }, completion: { (finished) -> Void in
                     self.animating = false
@@ -289,7 +289,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         normalizedRect.origin.y -= self.contentOffset.y
         
         currentInRect = normalizedRect
-    
+        
         self.checkForEdgesAndScroll(normalizedRect)
     }
     
@@ -306,7 +306,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
             self.deleteRows(at: [existngIndexPath], with: .automatic)
         } else {
             self.animating = true
-            self.performBatchUpdates({ () -> Void in
+            self.performUpdates({ () -> Void in
                 self.deleteRows(at: [existngIndexPath], with: .automatic)
             }, completion: { (finished) -> Void in
                 self.animating = false
@@ -323,6 +323,17 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         
         self.draggingPathOfCellBeingDragged = nil
         currentInRect = nil
+    }
+    
+    func performUpdates(_ updates: (() -> Swift.Void)?, completion: ((Bool) -> Swift.Void)? = nil) {
+        CATransaction.begin()
+        CATransaction.setCompletionBlock {
+            completion?(true)
+        }
+        self.beginUpdates()
+        updates?()
+        self.endUpdates()
+        CATransaction.commit()
     }
     
     public func dropDataItem(_ item : AnyObject, atRect : CGRect) -> Void {
