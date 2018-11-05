@@ -61,13 +61,15 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
             return nil
         }
         
-        UIGraphicsBeginImageContextWithOptions(cell.bounds.size, cell.isOpaque, 0)
-        cell.layer.render(in: UIGraphicsGetCurrentContext()!)
+        let cellView: UIView = (cell as? TDDraggableTableCell)?.representationImage() ?? cell
+        
+        UIGraphicsBeginImageContextWithOptions(cellView.bounds.size, cellView.isOpaque, 0)
+        cellView.layer.render(in: UIGraphicsGetCurrentContext()!)
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
         
         let imageView = UIImageView(image: image)
-        imageView.frame = cell.frame
+        imageView.frame = cellView.frame
         
         return imageView
     }

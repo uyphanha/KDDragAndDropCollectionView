@@ -8,6 +8,10 @@
 
 import UIKit
 
+public protocol TDDraggableTableCell {
+    func representationImage() -> UIView?
+}
+
 public protocol TDDraggable {
     func canDragAtPoint(_ point : CGPoint) -> Bool
     func representationImageAtPoint(_ point : CGPoint) -> UIView?
