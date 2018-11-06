@@ -69,7 +69,7 @@ public class TDDragAndDropTableView: UITableView, TDDraggable, TDDroppable {
         UIGraphicsEndImageContext()
         
         let imageView = UIImageView(image: image)
-        imageView.frame = cell.frame
+        imageView.frame = CGRect(x: cell.frame.origin.x, y: cell.frame.origin.y, width: cellView.frame.width, height: cellView.frame.height)
         
         return imageView
     }
